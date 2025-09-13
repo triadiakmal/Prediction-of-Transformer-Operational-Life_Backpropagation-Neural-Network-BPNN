@@ -25,7 +25,6 @@ random.seed(42)
 tf.random.set_seed(42)
 
 # Konfigurasi & Inisialisasi
-# PASTIKAN FILE PATH INI BENAR SESUAI LOKASI ANDA
 FILE_PATH = 'D:/PREDIKSI SISA UMUR TRAFO/dataset_bpnn_transformator.xlsx'
 SHEET_NAMES = ['Transformator 1', 'Transformator 2', 'Transformator 3', 'Transformator 4']
 FEATURES = ['Rata-Rata Beban (MW)', 'Kapasitas Beban (%)', 'Suhu Lingkungan (℃)', 'Suhu Hotspot (℃)',
@@ -169,6 +168,7 @@ print("\nMenyimpan hasil prediksi, model, dan grafik final...")
 output_dir = 'output_final_paling_akurat'
 os.makedirs(output_dir, exist_ok=True)
 
+# --- GRAFIK 1: Prediksi Sisa Umur ---
 for sheet_name, result in all_results.items():
     df_hist = result['data_hist']
     df_future = result['data_future']
@@ -185,46 +185,36 @@ for sheet_name, result in all_results.items():
         metrics_final_df.to_excel(writer, index=False, sheet_name='Metrik_Evaluasi_Final')
         metrics_kfold_df.to_excel(writer, index=False, sheet_name='Evaluasi_K-Fold_Detail')
 
-# --- [KODE GRAFIK YANG SUDAH DISESUAIKAN] ---
     fig, ax = plt.subplots(figsize=(20, 10))
 
-    # Plot data sebagai garis dan titik (marker)
     ax.plot(df_hist['Waktu'], df_hist[TARGET], 'b-', label='Sisa Umur Aktual', linewidth=2, zorder=3)
     ax.plot(df_hist['Waktu'], df_hist['Prediksi_Tren_Mulus'], 'r--', label='Sisa Umur Prediksi', linewidth=2, zorder=3)
     ax.plot(df_hist['Waktu'], df_hist[TARGET], 'bo', markersize=7, zorder=3)
     ax.plot(df_hist['Waktu'], df_hist['Prediksi_Tren_Mulus'], 'r^', markersize=7, zorder=3)
 
-    # Atur batas sumbu y
     y_min = min(df_hist[TARGET].min(), df_hist['Prediksi_Tren_Mulus'].min())
     y_max = max(df_hist[TARGET].max(), df_hist['Prediksi_Tren_Mulus'].max())
     padding = (y_max - y_min) * 0.1
     ax.set_ylim(y_min - padding, y_max + padding)
     bottom_y = ax.get_ylim()[0]
 
-    # Tambahkan garis vertikal dari bawah ke setiap titik data
     ax.vlines(df_hist['Waktu'], ymin=bottom_y, ymax=df_hist[TARGET], colors='b', linestyles='solid', alpha=0.4, zorder=1)
     ax.vlines(df_hist['Waktu'], ymin=bottom_y, ymax=df_hist['Prediksi_Tren_Mulus'], colors='r', linestyles='dashed', alpha=0.4, zorder=1)
-
     start_date = pd.Timestamp('2021-01-01')
     end_date = pd.Timestamp('2024-12-31')
     ax.set_xlim(start_date, end_date)
-
     ax.xaxis.set_major_locator(mdates.YearLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m')) # Format: 2021-01, 2022-01, dst.
-
-    # Penanda minor (Minor ticks) tanpa label, diatur per 1 bulan untuk garis grid bulanan
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m')) 
     ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=1))
 
-    # Menambahkan grid untuk kedua penanda (major dan minor)
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
     ax.set_title(f'Grafik Perbandingan Aktual vs Prediksi - {sheet_name} (2021-2024)', fontsize=16, fontweight='bold')
     ax.set_xlabel('Waktu', fontsize=12)
     ax.set_ylabel('Sisa Umur (Tahun)', fontsize=12)
     ax.legend(fontsize=12)
 
     fig.autofmt_xdate()
-    
+
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, f'1_grafik_historis_final_{sheet_name}.png'), dpi=300)
     plt.close(fig)
@@ -265,7 +255,7 @@ for name, res in all_results.items():
 report_df = pd.DataFrame(report_data)
 report_df.to_excel(os.path.join(output_dir, 'laporan_rekapitulasi_evaluasi.xlsx'), index=False)
 print("\n\n" + "="*85)
-print("                                 REKAPITULASI HASIL AKHIR EVALUASI MODEL")
+print("REKAPITULASI HASIL AKHIR EVALUASI MODEL")
 print("="*85)
 print(f"{'Transformator':<25} | {'MSE (K-Fold)':<15} | {'R² (K-Fold)':<15} | {'MSE (Final)':<12} | {'R² (Final)':<12}")
 print("-"*85)

@@ -26,7 +26,7 @@ SHEET_NAMES = ['Transformator 1', 'Transformator 2', 'Transformator 3', 'Transfo
 FEATURES = ['Rata-Rata Beban (MW)', 'Suhu Hotspot (℃)', 'Laju Penuaan Thermal (p.u)', 'TDCG (ppm)',
              'Kadar Air (ppm)', 'BDV (kV/2.5 mm)', 'Kadar Asam (mgKOH/g)', 'Usia Pakai (Tahun)']
 TARGET = 'Sisa Umur'
-TARGET_YEAR = 2030 # Tahun target untuk prediksi masa depan
+TARGET_YEAR = 2030 
 K_FOLDS = 10
 EPOCHS = 200
 BATCH_SIZE = 8
@@ -34,7 +34,7 @@ LEARNING_RATE = 0.03
 
 # Inisialisasi
 all_results = {}
-future_predictions = [] # List untuk menyimpan prediksi masa depan
+future_predictions = []
 
 # --- FUNGSI UNTUK MEMBUAT MODEL ---
 def create_model(input_shape):
@@ -62,7 +62,6 @@ for sheet_name in SHEET_NAMES:
         continue
 
     df = pd.read_excel(FILE_PATH, sheet_name=sheet_name)
-    # PENTING: Koreksi tipe data 'Waktu' agar .dt accessor bisa digunakan nanti
     df['Waktu'] = pd.to_datetime(df['Waktu'])
 
     X = df[FEATURES].values
@@ -120,7 +119,6 @@ for sheet_name in SHEET_NAMES:
     df['Prediksi'] = y_scaler.inverse_transform(final_model.predict(X_scaled_full))
     print("Model final selesai dilatih.")
 
-    # --- Bagian Prediksi Masa Depan (2030) dipindahkan ke sini ---
     last_year_in_data = df['Waktu'].dt.year.max()
     last_year_df = df[df['Waktu'].dt.year == last_year_in_data]
 
@@ -143,7 +141,7 @@ for sheet_name in SHEET_NAMES:
         'Prediksi Sisa Umur Tahun 2030': predicted_rul_2030
     })
 
-    # Simpan semua hasil untuk laporan akhir
+    # Menyimpan hasil untuk laporan akhir
     all_results[sheet_name] = {
         'data': df.copy(),
         'metrics': {'MSE': avg_mse, 'R2': avg_r2},
@@ -161,17 +159,17 @@ os.makedirs(per_transformator_dir, exist_ok=True)
 for sheet_name, result in all_results.items():
     df_result = result['data']
 
-    # 1. Simpan data prediksi historis ke Excel
+    # Menyimpan data prediksi historis ke Excel
     df_output = df_result[['Waktu'] + FEATURES + [TARGET, 'Prediksi']]
     output_path = os.path.join(per_transformator_dir, f'prediksi_{sheet_name}_2021-2024.xlsx')
     with pd.ExcelWriter(output_path) as writer:
         df_output.to_excel(writer, index=False, sheet_name='Prediksi')
         pd.DataFrame(result['fold_metrics'], columns=['Fold', 'MSE', 'R2']).to_excel(writer, index=False, sheet_name='Evaluasi K-Fold')
 
-    # 2. Simpan model
+    # Menyimpan model
     result['model'].save(os.path.join(output_dir, f'model_{sheet_name}.h5'))
 
-    # 3. Buat dan simpan grafik perbandingan (2021-2024)
+    # Menmbuat dan menyimpan grafik perbandingan (2021-2024)
     plt.figure(figsize=(15, 7))
     plt.plot(df_result['Waktu'], df_result[TARGET], 'b-', label='Sisa Umur Aktual', linewidth=2)
     plt.plot(df_result['Waktu'], df_result['Prediksi'], 'r--', label='Sisa Umur Prediksi', linewidth=2, alpha=0.8)
@@ -185,21 +183,18 @@ for sheet_name, result in all_results.items():
     plt.savefig(os.path.join(output_dir, f'grafik_perbandingan_{sheet_name}.png'), dpi=300)
     plt.close()
 
-    # 4. ✨ Buat dan simpan GRAFIK PROYEKSI BARU ke tahun 2030 ✨
+    # Menmbuat dan menyimpan GRAFIK PROYEKSI BARU ke tahun 2030
     predicted_rul_2030 = result['predicted_rul_2030']
     target_date_2030 = datetime(TARGET_YEAR, 12, 31)
 
     plt.figure(figsize=(15, 7))
-    # Plot data historis
     plt.plot(df_result['Waktu'], df_result[TARGET], 'b-', label='Sisa Umur Aktual (Historis)')
     plt.plot(df_result['Waktu'], df_result['Prediksi'], 'r-', label='Prediksi Model (Historis)')
 
-    # Buat dan plot garis proyeksi
     forecast_x = [df_result['Waktu'].iloc[-1], target_date_2030]
     forecast_y = [df_result['Prediksi'].iloc[-1], predicted_rul_2030]
     plt.plot(forecast_x, forecast_y, 'g--', label=f'Proyeksi ke {TARGET_YEAR}')
 
-    # Tandai titik prediksi 2030
     plt.plot(target_date_2030, predicted_rul_2030, 'g*', markersize=15,
              label=f'Prediksi {TARGET_YEAR}: {predicted_rul_2030:.2f} Tahun')
 
@@ -213,7 +208,6 @@ for sheet_name, result in all_results.items():
     plt.close()
 
 # --- LAPORAN AKHIR DI KONSOL DAN FILE ---
-# 1. Laporan Evaluasi
 report_df = pd.DataFrame([{
     'Transformator': name,
     'MSE Rata-rata (K-Fold)': res['metrics']['MSE'],
@@ -221,11 +215,9 @@ report_df = pd.DataFrame([{
 } for name, res in all_results.items()])
 report_df.to_excel(os.path.join(output_dir, 'laporan_evaluasi_akhir.xlsx'), index=False)
 
-# 2. Laporan Prediksi Masa Depan
 future_report_df = pd.DataFrame(future_predictions)
 future_report_df.to_excel(os.path.join(output_dir, 'laporan_prediksi_2030.xlsx'), index=False)
 
-# 3. Tampilkan Laporan di Console
 print("\n\n" + "="*95)
 print("REKAPITULASI HASIL AKHIR EVALUASI MODEL")
 print("="*95)
